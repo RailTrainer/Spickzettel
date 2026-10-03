@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MeisterFormel – Lernzettel & Formelsammlungen für die Meisterprüfung</title>
+  
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+
+  <!-- KaTeX CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- KaTeX JS -->
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+  <!-- html2pdf.js for one-click PDF direct download -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased font-sans">
+
+  <!-- App Header (Hidden when printing) -->
+  <header class="app-header no-print">
+    <div class="header-left">
+      <div class="brand">
+        <div class="brand-icon">
+          <i data-lucide="calculator"></i>
+        </div>
+        <div>
+          <h1 class="brand-title">MeisterFormel</h1>
+          <p class="brand-subtitle">Formel- & Lernzettel-Generator für die Meisterprüfung</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toolbar Actions -->
+    <div class="header-actions">
+      <!-- Vorlagen Dropdown -->
+      <div class="dropdown">
+        <button id="templateBtn" class="btn btn-secondary" title="Fertige Meister-Vorlagen laden">
+          <i data-lucide="book-open"></i>
+          <span>Muster-Lernzettel</span>
+          <i data-lucide="chevron-down" class="icon-small"></i>
+        </button>
+        <div id="templateMenu" class="dropdown-menu">
+          <div class="dropdown-header">Wähle eine Meister-Vorlage:</div>
+          <button class="dropdown-item" data-template="elektro">
+            <span class="dot dot-amber"></span> Elektrotechnik: Ohm, Leistung, Wechselstrom
+          </button>
+          <button class="dropdown-item" data-template="metall">
+            <span class="dot dot-blue"></span> Metall & Mechanik: Schnittdaten, Kräfte & Drehmoment
+          </button>
+          <button class="dropdown-item" data-template="shk">
+            <span class="dot dot-emerald"></span> SHK & Wärmelehre: Wärmemenge, Volumenströme
+          </button>
+          <button class="dropdown-item" data-template="bwl">
+            <span class="dot dot-purple"></span> Meister-BWL (Teil III): Zuschlagskalkulation & Zinsen
+          </button>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item" data-template="blank">
+            <span class="dot dot-gray"></span> Leeres Blatt erstellen
+          </button>
+        </div>
+      </div>
+
+      <!-- Import / Export JSON -->
+      <button id="btnImport" class="btn btn-ghost" title="Lernzettel aus Datei laden">
+        <i data-lucide="upload"></i>
+        <span>Laden</span>
+      </button>
+      <input type="file" id="importFileInput" accept=".json" style="display:none;">
+
+      <button id="btnExportJson" class="btn btn-ghost" title="Als Datei sichern (JSON)">
+        <i data-lucide="download"></i>
+        <span>Sichern</span>
+      </button>
+
+      <button id="btnMathHelp" class="btn btn-ghost" title="Formel-Hilfe & Tastaturkürzel">
+        <i data-lucide="help-circle"></i>
+        <span>Formel-Hilfe</span>
+      </button>
+
+      <!-- View Toggle: Split / Editor / Preview -->
+      <div class="view-toggles">
+        <button id="btnViewSplit" class="toggle-btn active" title="Geteilte Ansicht">
+          <i data-lucide="columns-2"></i>
+        </button>
+        <button id="btnViewEditor" class="toggle-btn" title="Nur Editor">
+          <i data-lucide="edit-3"></i>
+        </button>
+        <button id="btnViewPreview" class="toggle-btn" title="A4-Druckansicht">
+          <i data-lucide="file-text"></i>
+        </button>
+      </div>
+
+      <!-- PDF Download Button -->
+      <button id="btnPrintPdf" class="btn btn-primary" title="Als druckfertige PDF speichern (A4 Vektorqualität)">
+        <i data-lucide="printer"></i>
+        <span>PDF erstellen / Drucken</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="app-main">
+
+    <!-- LEFT PANE: Editor & Formular -->
+    <aside id="editorPane" class="editor-pane no-print">
+      <!-- General Sheet Meta -->
+      <div class="editor-card">
+        <div class="card-header-simple">
+          <div class="flex items-center gap-2 font-semibold">
+            <i data-lucide="sliders" class="text-primary"></i>
+            <span>Kopfdaten & Layout</span>
+          </div>
+          <button id="btnResetAll" class="btn-text-danger" title="Alles leeren">Zurücksetzen</button>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label for="sheetTitle">Titel des Lernzettels</label>
+            <input type="text" id="sheetTitle" class="form-input" placeholder="z. B. Formelsammlung: Elektrotechnik Teil II">
+          </div>
+          <div class="form-group">
+            <label for="sheetSubtitle">Thema / Fach / Handwerk</label>
+            <input type="text" id="sheetSubtitle" class="form-input" placeholder="z. B. Fachtheorie: Elektrische Maschinen">
+          </div>
+          <div class="form-group">
+            <label for="sheetAuthor">Prüfling / Name</label>
+            <input type="text" id="sheetAuthor" class="form-input" placeholder="z. B. Meisteranwärter M. Mustermann">
+          </div>
+          <div class="form-group">
+            <label for="sheetColumns">Spaltenaufteilung</label>
+            <select id="sheetColumns" class="form-input">
+              <option value="cols-2">2 Spalten (Kompakt, optimal für A4)</option>
+              <option value="cols-1">1 Spalte (Großzügig, breite Rechnungen)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="sheetTheme">Farb-Akzent</label>
+            <select id="sheetTheme" class="form-input">
+              <option value="theme-navy">Meister-Navy (Klassisch & Seriös)</option>
+              <option value="theme-amber">Handwerks-Bernstein / Gold</option>
+              <option value="theme-emerald">Technik-Grün / SHK</option>
+              <option value="theme-slate">Industrie-Grau / Neutral</option>
+            </select>
+          </div>
+          <div class="form-group full-width">
+            <label for="formulaSize">Formel-Darstellungsgröße</label>
+            <select id="formulaSize" class="form-input">
+              <option value="math-size-large" selected>Groß (Standard & Hervorgehoben)</option>
+              <option value="math-size-xl">Sehr groß (Plakativ & Extra lesbar)</option>
+              <option value="math-size-normal">Kompakt (Mehr Inhalt pro Seite)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vereinfachter Mathematik-Symbol-Einfüger -->
+      <div class="math-quick-bar">
+        <div class="quick-bar-title">
+          <div class="flex items-center gap-1.5 font-semibold text-slate-800">
+            <i data-lucide="sparkles" class="text-amber-500" style="width: 15px; height: 15px;"></i>
+            <span>Mathematik-Symbole</span>
+          </div>
+          <span class="quick-bar-hint">Symbol anklicken &rarr; wird sofort eingefügt</span>
+        </div>
+
+        <!-- Symbolleiste in übersichtlichen Gruppen -->
+        <div class="symbol-pad">
+          <!-- Gruppe 1: Brüche & Grundrechenarten -->
+          <div class="symbol-group" title="Brüche & Grundrechenarten">
+            <button type="button" class="sym-btn sym-accent" data-insert="\frac{}{}" title="Leerer Bruchstrich (ohne a/b)">\(\frac{\Box}{\Box}\)</button>
+            <button type="button" class="sym-btn" data-insert="\cdot " title="Malpunkt: \cdot">\(\cdot\)</button>
+            <button type="button" class="sym-btn" data-insert="\times " title="Malkreuz: \times">\(\times\)</button>
+            <button type="button" class="sym-btn" data-insert="/" title="Schrägstrich: /">/</button>
+            <button type="button" class="sym-btn" data-insert="\pm " title="Plus-Minus: \pm">\(\pm\)</button>
+            <button type="button" class="sym-btn" data-insert="=" title="Gleichheitszeichen: =">=</button>
+          </div>
+
+          <!-- Gruppe 2: Wurzeln, Potenzen & Klammern -->
+          <div class="symbol-group" title="Wurzeln & Potenzen">
+            <button type="button" class="sym-btn sym-accent" data-insert="\sqrt{x}" title="Quadratwurzel: \sqrt{x}">\(\sqrt{x}\)</button>
+            <button type="button" class="sym-btn" data-insert="\sqrt{3}" title="Drehstromfaktor Wurzel 3: \sqrt{3}">\(\sqrt{3}\)</button>
+            <button type="button" class="sym-btn" data-insert="^2" title="Hoch 2 (Quadrat): ^2">\(x^2\)</button>
+            <button type="button" class="sym-btn" data-insert="^3" title="Hoch 3 (Kubik): ^3">\(x^3\)</button>
+            <button type="button" class="sym-btn" data-insert="_{1}" title="Index / Tiefgestellt: _{1}">\(x_1\)</button>
+            <button type="button" class="sym-btn" data-insert="\left(  \right)" title="Große Klammern: ( )">\(( \; )\)</button>
+          </div>
+
+          <!-- Gruppe 3: Formelumstellung & Logik -->
+          <div class="symbol-group" title="Formelumstellung">
+            <button type="button" class="sym-btn" data-insert=" \Leftrightarrow " title="Formelumstellung (Äquivalent): \Leftrightarrow">\(\Leftrightarrow\)</button>
+            <button type="button" class="sym-btn" data-insert="\approx " title="Ungefähr gleich: \approx">\(\approx\)</button>
+            <button type="button" class="sym-btn" data-insert="\le " title="Kleiner oder gleich: \le">\(\le\)</button>
+            <button type="button" class="sym-btn" data-insert="\ge " title="Größer oder gleich: \ge">\(\ge\)</button>
+          </div>
+
+          <!-- Gruppe 4: Meisterprüfung Formelzeichen & Einheiten -->
+          <div class="symbol-group" title="Griechische Symbole & Einheiten">
+            <button type="button" class="sym-btn" data-insert="\pi " title="Kreiszahl Pi: \pi">\(\pi\)</button>
+            <button type="button" class="sym-btn" data-insert="\Delta " title="Delta / Differenz: \Delta">\(\Delta\)</button>
+            <button type="button" class="sym-btn" data-insert="\varphi " title="Phasenwinkel Phi: \varphi">\(\varphi\)</button>
+            <button type="button" class="sym-btn" data-insert="\Omega " title="Ohm: \Omega">\(\Omega\)</button>
+            <button type="button" class="sym-btn" data-insert="\eta " title="Wirkungsgrad Eta: \eta">\(\eta\)</button>
+            <button type="button" class="sym-btn" data-insert="\mu " title="Mikro / Reibwert: \mu">\(\mu\)</button>
+            <button type="button" class="sym-btn" data-insert="\rho " title="Dichte / Spez. Widerstand: \rho">\(\rho\)</button>
+            <button type="button" class="sym-btn" data-insert="\text{Einheit}" title="Einheit aufrecht: \text{...}">\(\text{Einheit}\)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Formelkarten Liste Header -->
+      <div class="cards-control-bar">
+        <h2 class="cards-control-title">
+          <span>Formelkarten</span>
+          <span id="cardCountBadge" class="badge">0</span>
+        </h2>
+        <div class="flex gap-2">
+          <button id="btnAddCard" class="btn btn-sm btn-primary">
+            <i data-lucide="plus-circle"></i>
+            <span>Formelkarte hinzufügen</span>
+          </button>
+          <button id="btnAddNote" class="btn btn-sm btn-secondary" title="Einen reinen Notiz-/Textblock einfügen">
+            <i data-lucide="file-plus"></i>
+            <span>Notizblock</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- List of Dynamic Cards in Editor -->
+      <div id="cardsList" class="cards-list">
+        <!-- Rendered via JavaScript -->
+      </div>
+    </aside>
+
+    <!-- RIGHT PANE: Live DIN-A4 Paper Preview -->
+    <section id="previewPane" class="preview-pane">
+      <div class="preview-toolbar no-print">
+        <div class="preview-info">
+          <i data-lucide="printer" class="text-slate-500"></i>
+          <span>Live DIN-A4 Vorschau (Automatische Seitenumbrüche beim PDF-Druck)</span>
+        </div>
+        <div class="preview-zoom">
+          <span id="autoSaveIndicator" class="autosave-tag">
+            <i data-lucide="check-circle-2"></i> Gespeichert
+          </span>
+          <button id="btnZoomOut" class="btn-icon" title="Verkleinern"><i data-lucide="zoom-out"></i></button>
+          <span id="zoomLevelText" class="zoom-text">100%</span>
+          <button id="btnZoomIn" class="btn-icon" title="Vergrößern"><i data-lucide="zoom-in"></i></button>
+          <button id="btnZoomReset" class="btn-icon" title="Passend"><i data-lucide="maximize-2"></i></button>
+        </div>
+      </div>
+
+      <!-- The Printable Container (matches A4 sheet) -->
+      <div class="paper-stage">
+        <div id="printSheet" class="a4-sheet theme-navy cols-2">
+          
+          <!-- Sheet Header -->
+          <header class="sheet-header">
+            <div class="sheet-header-main">
+              <div class="sheet-badge">MEISTERPRÜFUNG · FORMELSAMMLUNG</div>
+              <h1 id="previewTitle" class="sheet-title">Formelsammlung: Elektrotechnik</h1>
+              <p id="previewSubtitle" class="sheet-subtitle">Fachtheorie Teil II & Fachpraxis</p>
+            </div>
+            <div class="sheet-meta-box">
+              <div class="meta-row">
+                <span class="meta-label">Prüfling:</span>
+                <span id="previewAuthor" class="meta-val">Max Mustermann</span>
+              </div>
+              <div class="meta-row">
+                <span class="meta-label">Stand:</span>
+                <span id="previewDate" class="meta-val">02.10.2026</span>
+              </div>
+              <div class="meta-row">
+                <span class="meta-label">Status:</span>
+                <span class="meta-val highlight">Prüfungsrelevant</span>
+              </div>
+            </div>
+          </header>
+
+          <!-- Sheet Content Grid -->
+          <div id="previewGrid" class="sheet-grid">
+            <!-- Dynamic Cards are mirrored here with KaTeX -->
+          </div>
+
+          <!-- Sheet Footer -->
+          <footer class="sheet-footer">
+            <span>Erstellt mit MeisterFormel · Prüfungsunterlage Meisterprüfung</span>
+            <span class="footer-page">DIN A4</span>
+          </footer>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Formula Help Modal -->
+  <div id="helpModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="flex items-center gap-2">
+          <i data-lucide="help-circle" class="text-primary"></i>
+          <h3 class="modal-title">Einfache Mathematische Schreibweise</h3>
+        </div>
+        <button id="btnCloseHelp" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-intro">
+          Du kannst Formeln entweder per Klick auf die <strong>Mathematik-Schnelleinfüger</strong> einfügen oder direkt wie gewohnt tippen. 
+          Die App wandelt gängige Zeichen automatisch in saubere mathematische Darstellung um!
+        </p>
+
+        <div class="help-table-wrap">
+          <table class="help-table">
+            <thead>
+              <tr>
+                <th>Was du willst</th>
+                <th>Eingabe</th>
+                <th>Ergebnis</th>
+                <th>Typisches Meisterbeispiel</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Bruchstrich</strong></td>
+                <td><code>\frac{U}{I}</code></td>
+                <td class="math-col">\(R = \frac{U}{I}\)</td>
+                <td>Widerstand, Wirkungsgrad, Schnittgeschw.</td>
+              </tr>
+              <tr>
+                <td><strong>Malzeichen (Punkt)</strong></td>
+                <td><code>\cdot</code> oder einfach <code>*</code></td>
+                <td class="math-col">\(P = U \cdot I\)</td>
+                <td>Elektrische Leistung, Drehmoment</td>
+              </tr>
+              <tr>
+                <td><strong>Wurzel</strong></td>
+                <td><code>\sqrt{3}</code></td>
+                <td class="math-col">\(\sqrt{3}\)</td>
+                <td>Drehstrom-Verkettungsfaktor</td>
+              </tr>
+              <tr>
+                <td><strong>Potenz / Hochzahl</strong></td>
+                <td><code>d^2</code> oder <code>x^3</code></td>
+                <td class="math-col">\(d^2\)</td>
+                <td>Querschnittsfläche \(A = \frac{\pi \cdot d^2}{4}\)</td>
+              </tr>
+              <tr>
+                <td><strong>Index / Tiefgestellt</strong></td>
+                <td><code>R_{ges}</code> oder <code>U_{eff}</code></td>
+                <td class="math-col">\(R_{\text{ges}}\)</td>
+                <td>Gesamtwiderstand, Effektivwert</td>
+              </tr>
+              <tr>
+                <td><strong>Formelumstellung</strong></td>
+                <td><code>\Leftrightarrow</code></td>
+                <td class="math-col">\(\Leftrightarrow\)</td>
+                <td>\(U = R \cdot I \Leftrightarrow I = \frac{U}{R}\)</td>
+              </tr>
+              <tr>
+                <td><strong>Griechische Zeichen</strong></td>
+                <td><code>\pi</code>, <code>\Delta</code>, <code>\varphi</code>, <code>\Omega</code></td>
+                <td class="math-col">\(\pi, \Delta T, \cos\varphi, \Omega\)</td>
+                <td>Wärmedifferenz, Phasenwinkel, Ohm</td>
+              </tr>
+              <tr>
+                <td><strong>Einheiten im Bruch</strong></td>
+                <td><code>\text{kW}</code> oder <code>\text{mm}</code></td>
+                <td class="math-col">\(\text{kW}, \text{mm}^2\)</td>
+                <td>Keine Schrägstellung der Einheit</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="help-tip-box">
+          <i data-lucide="lightbulb" class="text-amber-500"></i>
+          <div>
+            <strong>Tipp für den PDF-Export:</strong>
+            Wähle im Druckdialog deines Browsers als Ziel <strong>"Als PDF speichern"</strong>. 
+            Stelle sicher, dass unter "Weitere Einstellungen" das Häkchen bei <strong>"Hintergrundgrafiken"</strong> aktiviert ist, damit Farbakzente und Kästen perfekt übernommen werden.
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnGotItHelp" class="btn btn-primary">Verstanden</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="templates.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
